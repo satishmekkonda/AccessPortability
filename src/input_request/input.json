@@ -1,0 +1,29 @@
+{
+   "APDataRequestTransaction": {
+      "TransactionMetadata": {
+         "SourceSystemName": ""*****************************",
+         "TransactionType": "APDataRequest",
+         "UniqueTransactionID": "*****************************",
+         "TransactionDateTime": "2022-12-14T12:25:41.885+05:30"      },
+      "Payload": {
+         "APDataRequest": {
+            "CustomerRequestIdentifier": "12",
+            "CustomerRequestDateTime": "2022-12-14T12:25:41.890+05:30",
+            "BusinessPartnerIdentifier": ""*****************************",
+            "OnlineOMSCustomerIdentifier": {
+               "@System": "HYBRIS",
+               "$": "100060705030"            },
+            "CountryCode": "SK",
+            "CorporateBrandId": "5",
+            "AccessRequest": "true",
+            "PortabilityRequest": "true",
+            "GuestCustomer": "false",
+            "TargetSystems": {
+               "TargetSystem": [
+                  "BISCUIT",
+                  "RENTAL"               ]
+            }
+         }
+      }
+   }
+}
