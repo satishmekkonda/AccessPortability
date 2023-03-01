@@ -1,0 +1,20 @@
+[postgres] #linux
+sudo apt update
+sudo apt-get install git
+sudo apt install python3-pip
+python3 -m pip
+pip3 -V
+#pip3 install psycog2
+pip install psycopg2-binary
+
+[bigquery] #linux
+pip install virtualenv
+virtualenv bq_env
+source bq_env/bin/activate
+bq_env/bin/pip install google-cloud-bigquery 
+Authentication from cloud shell: gcloud auth application-default login
+pip install --upgrade google-api-python-client
+pip install --upgrade google-cloud
+pip install --upgrade google-cloud-bigquery
+pip install --upgrade google-cloud-storage
+
