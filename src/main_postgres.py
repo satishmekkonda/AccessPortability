@@ -2,7 +2,7 @@ import psycopg2
 import json
 import glob
 import datetime
-from config import config,config_db,config_env,bigquery_connection,bigquery_connection_db,connect_metadata,retrieve_views,retrieve_failure_records,retrieve_final_records,env_variables
+from config_postgres import postgres_connection,postgres_connection_db,config_env, env_variables,postgres_connect_metadata,postgres_retrieve_views,postgres_retrieve_failure_records,postgres_retrieve_final_records
 
 
 ##################################################################################################
@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     # retrieve all the views from the view registry
     print('*********************************Retrieving Views from View Registry*******************************')
-    view_registry = retrieve_views()
+    view_registry = postgres_retrieve_views()
 
 
     # retrieve all pub/sub messages i.e. xmls (create a few sample xmls)
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         write_access_request = """INSERT INTO access_request (UniqueTransactionID,TransactionDateTime,CustomerRequestIdentifier,CustomerRequestDateTime,BusinessPartnerIdentifier,status,attempt_count,created_at,updated_at,input_json) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
         write_access_request_attempt = """INSERT INTO access_request_attempt (BusinessPartnerIdentifier,status,created_at,updated_at) VALUES(%s,%s,%s,%s)"""
         try:
-            connection, cursor = connect_metadata()
+            connection, cursor = postgres_connect_metadata()
             print('********************inserting records into access_request and access_request_attemp tables*******************')
             write_access_request_exec = cursor.execute(write_access_request,(UniqueTransactionID,TransactionDateTime,CustomerRequestIdentifier,CustomerRequestDateTime,BusinessPartnerIdentifier,status,attempt_count,created_at,updated_at,text_json))
             write_access_request_attempt_exec = cursor.execute(write_access_request_attempt,(BusinessPartnerIdentifier,status,created_at,updated_at))
@@ -80,9 +80,8 @@ if __name__ == "__main__":
                 connection = None                
                 try:   
                 # retrieve records from the view using the bp id and requested date/time                        
-                    params=config_db()
+                    params=postgres_connection_db()
                     connection=psycopg2.connect(**params, database=database_name)
-                    print(connection)
                     cursor=connection.cursor()
                     #request_query=f"select * from {view_name} where business_partner_no = {BusinessPartnerIdentifier}"
                     request_query=f"select * from {view_name} where business_partner_no = {BusinessPartnerIdentifier} and customer_request_date <= '{CustomerRequestDateTime}'"
@@ -97,7 +96,7 @@ if __name__ == "__main__":
  
                     try:
                         print("**********************Updating Successful Status Information to access_request and access_request_attempt_tables**********************")
-                        connection, cursor = connect_metadata()
+                        connection, cursor = postgres_connect_metadata()
                         cursor = connection.cursor()
                         update_access_request_query = f"UPDATE access_request SET status='Completed', attempt_count = {first_increment_count} where BusinessPartnerIdentifier = {BusinessPartnerIdentifier} RETURNING *"
                         print(update_access_request_query)
@@ -119,11 +118,11 @@ if __name__ == "__main__":
                 # update the record in access_request with status - failed/completed and increment attempt_count  
                 except(Exception, psycopg2.DatabaseError) as error:
                     print(error)
-                    print("**********************Updating Failure Status Information to access_request and access_request_attempt_tables**********************")
                     print('Failed at first run, so increasing attempt count to ', first_increment_count)                    
                     connection = None
                     try:
-                        connection, cursor = connect_metadata()
+                        print("**********************Updating Failure Status Information to access_request and access_request_attempt_tables**********************")
+                        connection, cursor = postgres_connect_metadata()
                         cursor = connection.cursor()
                         update_access_request_query = f"UPDATE access_request SET status='Failed', attempt_count = {first_increment_count} where BusinessPartnerIdentifier = {BusinessPartnerIdentifier} RETURNING *"
                         print(update_access_request_query)
@@ -162,7 +161,7 @@ if __name__ == "__main__":
     print('**********************START OF SECOND RUN***********************************')
     # retrieve records in access_request table with status failed and attempt count < 2
     print('***************retrieving records in access_request table with status failed and attempt count < 2*************************')
-    failure_retrieve_records = retrieve_failure_records()
+    failure_retrieve_records = postgres_retrieve_failure_records()
     print('The Retrieved Failure Records: ', failure_retrieve_records)
 
 
@@ -193,7 +192,7 @@ if __name__ == "__main__":
         write_access_request_attempt = """INSERT INTO access_request_attempt (BusinessPartnerIdentifier,status,created_at,updated_at) VALUES(%s,%s,%s,%s)"""
         connection = None
         try:
-            connection, cursor = connect_metadata()
+            connection, cursor = postgres_connect_metadata()
             print('********************inserting records into access_request_attemp table*******************')
             write_access_request_attempt_exec = cursor.execute(write_access_request_attempt,(BusinessPartnerIdentifier,status,created_at,updated_at))
             connection.commit()
@@ -210,16 +209,15 @@ if __name__ == "__main__":
         print('count_from_previous_run: ', first_increment_count)
         # for each view in the view registry
         try:
-            print('********************QueryingEachView in the Second RUN...********************')
+            print(f'********************QueryingEachView in the Second RUN for {record}....********************')
             for database_name, view_name in view_registry.items():  
                 print('current_database: ', database_name)
                 print('current_view: ', view_name)
                 connection = None                
                 # retrieve records from the view using the bp id and requested date/time                        
                 try:   
-                    params=config_db()
+                    params=postgres_connection_db()
                     connection=psycopg2.connect(**params, database=database_name)
-                    print(connection)
                     cursor=connection.cursor()
                     #request_query=f"select * from {view_name} where business_partner_no = {BusinessPartnerIdentifier}"
                     request_query=f"select * from {view_name} where business_partner_no = {BusinessPartnerIdentifier} and customer_request_date <= '{CustomerRequestDateTime}'"
@@ -233,7 +231,7 @@ if __name__ == "__main__":
                     output_json.append(query_result)
  
                     try:
-                        connection, cursor = connect_metadata()
+                        connection, cursor = postgres_connect_metadata()
                         cursor = connection.cursor()
                         update_access_request_query = f"UPDATE access_request SET status='Completed', attempt_count = {first_increment_count} where BusinessPartnerIdentifier = {BusinessPartnerIdentifier} RETURNING *"
                         print(update_access_request_query)
@@ -258,7 +256,7 @@ if __name__ == "__main__":
                     print('Failed at second run, so increasing count..attempt count is: ', second_increment_count)                    
                     connection = None
                     try:
-                        connection, cursor = connect_metadata()
+                        connection, cursor = postgres_connect_metadata()
                         cursor = connection.cursor()
                         update_access_request_query = f"UPDATE access_request SET status='Failed', attempt_count = {second_increment_count} where BusinessPartnerIdentifier = {BusinessPartnerIdentifier} RETURNING *"
                         print(update_access_request_query)
@@ -291,11 +289,13 @@ if __name__ == "__main__":
                 print('Attempt Count after second run: ', second_increment_count)
 
     print('**********************END OF SECOND RUN***********************************')
+    
+    #################################################################################################################
+
     print('**********************START OF FINAL RUN FOR TRIGGERING NOTIFICATION***********************************')
-#################################################################################################################
     # retrieve records in access_request table with status failed and attempt count < 2
-    print('*******************retrieving records in access_request table with status failed and attempt count = 2********************')
-    final_retrieve_records = retrieve_final_records()
+    print('***************retrieving records in access_request table with status failed and attempt count = 2*************************')
+    final_retrieve_records = postgres_retrieve_final_records()
     print('The Retrieved Final Records: ', final_retrieve_records)
 
 
@@ -319,5 +319,3 @@ if __name__ == "__main__":
         print('Failure alert  to xyz@hm.com for BusinessPartnerIdentifier: ',{BusinessPartnerIdentifier})
 
     print('---------------------------------Failure Notification to be setup for BP IDs after Second RUN----------------------------------')
-    
-        
